@@ -8,7 +8,7 @@ export class FlightsPage {
   }
 
   async selectOneWayTrip() {
-    await this.page.locator('xpath=/html/body/div[1]/div[2]/main/div/div/div[1]/div/div/div/div/div[2]/div[1]/div/fieldset/div/div[2]/label/span[2]').click();
+    await this.page.locator('#search_type_option_ONEWAY').click();
   }
 
   async setFromAndToCities(from: string, to: string) {
@@ -18,9 +18,9 @@ export class FlightsPage {
     await this.page.waitForTimeout(500); // Small delay for UI to update
 
     // Wait for chip to be visible before clicking close button
-    const chipCloseButton = this.page.locator('button[data-autocomplete-chip-idx="0"] .Icon-module__root___GDSyQ');
-    await chipCloseButton.waitFor({ state: 'visible' });
-    await chipCloseButton.click();
+    const chip = this.page.locator('span.Chip-module__trigger___KspJN');
+    await expect(chip).toBeVisible();
+    await chip.click();
 
     // Wait for chip to be removed
     await this.page.waitForTimeout(300);
