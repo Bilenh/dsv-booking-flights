@@ -1,0 +1,7 @@
+
+/test-results/
+/allure-report/
+/allure-results/
+/playwright-report/
+*.log
+.env
