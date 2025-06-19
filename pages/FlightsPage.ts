@@ -5,6 +5,7 @@ export class FlightsPage {
 
   async navigate() {
     await this.page.goto('https://www.booking.com/flights');
+
   }
 
   async selectOneWayTrip() {
@@ -15,15 +16,15 @@ export class FlightsPage {
     
     // Click the location input and wait for it to be ready
     await this.page.locator('[data-ui-name="input_location_from_segment_0"]').click();
-    await this.page.waitForTimeout(500); // Small delay for UI to update
+    // await this.page.waitForTimeout(500); // Small delay for UI to update
 
     // Wait for chip to be visible before clicking close button
-    const chip = this.page.locator('span.Chip-module__trigger___KspJN');
+    const chip = this.page.locator('[data-autocomplete-chip-idx="0"]');
     await expect(chip).toBeVisible();
     await chip.click();
 
     // Wait for chip to be removed
-    await this.page.waitForTimeout(300);
+    await expect(chip).not.toBeVisible();
 
     // Fill the input field and wait for it to be ready
     const toField = this.page.locator('input[data-ui-name="input_text_autocomplete"]');
@@ -36,10 +37,13 @@ export class FlightsPage {
       timeout: 10000 
     });
 
-    // Wait for checkbox to be available and check it
-    const firstCheckbox = this.page.locator('#flights-searchbox_suggestions input[type="checkbox"]').first();
-    await firstCheckbox.waitFor({ state: 'visible' });
-    await firstCheckbox.click();
+    // Wait for any overlay to disappear (replace with actual selector if known)
+    await this.page.waitForSelector('.overlay', { state: 'hidden', timeout: 10000 }).catch(() => {});
+
+    // Find the first suggestion row (adjust selector as needed)
+    const firstSuggestion = this.page.locator('#flights-searchbox_suggestions li[data-ui-name="locations_list_item"]').first();
+    await expect(firstSuggestion).toBeVisible();
+    await firstSuggestion.click();
 
 
     await this.page.locator('[data-ui-name="input_location_to_segment_0"]').click();
@@ -47,15 +51,17 @@ export class FlightsPage {
     const fromField = this.page.locator('input[data-ui-name="input_text_autocomplete"]');
     fromField.fill(to);
     // Wait for dropdown and select first checkbox
-    await this.page.waitForSelector('#flights-searchbox_suggestions', { state: 'visible' });
-    const secondCheckbox = this.page.locator('#flights-searchbox_suggestions input[type="checkbox"]').first();
-    await secondCheckbox.check();
+    const secondSuggestion = this.page.locator('#flights-searchbox_suggestions li[data-ui-name="locations_list_item"]').first();
+    await expect(firstSuggestion).toBeVisible();
+    await secondSuggestion.click();
 
   }
 
   async selectDepartureDate() {
     // Open the calendar
-    await this.page.getByPlaceholder('Choose departure date').click();
+    const dateButton = this.page.locator('button[data-ui-name="button_date_segment_0"]');
+    await expect(dateButton).toBeVisible({ timeout: 5000 });
+    await dateButton.click();
 
     // Wait for the calendar to be visible
     await this.page.waitForSelector('[data-ui-name="calendar_body"]');
@@ -79,9 +85,21 @@ export class FlightsPage {
   }
 
   async getFlightSummary(): Promise<string> {
+    // Wait for either the results summary or the no-results message
+    const resultsSummary = this.page.locator('[data-testid="search_filters_summary_results_number"]');
+    const noResultsMessage = this.page.locator('text=We don\'t have any flights matching your search');
 
-    const resultsSummary = this.page.locator('xpath=/html/body/div[1]/div[2]/main/div/div/div[2]/div/div/div/div/div[1]/div/div[2]/div/div[2]');
-    await expect(resultsSummary).toBeVisible({ timeout: 10000 });
-    return this.page.locator('xpath=/html/body/div[1]/div[2]/main/div/div/div[2]/div/div/div/div/div[1]/div/div[2]/div/div[2]').innerText();
+    await Promise.race([
+      resultsSummary.waitFor({ state: 'visible', timeout: 10000 }),
+      noResultsMessage.waitFor({ state: 'visible', timeout: 10000 })
+    ]);
+
+    if (await resultsSummary.isVisible()) {
+      return await resultsSummary.innerText();
+    } else if (await noResultsMessage.isVisible()) {
+      return await noResultsMessage.innerText();
+    } else {
+      throw new Error('Neither results nor no-results message appeared.');
+    }
   }
 }
